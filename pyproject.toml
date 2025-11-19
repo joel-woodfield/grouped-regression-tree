@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.5.0",
+    "pybind11",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "grouped-regression-tree"
+version = "0.0.1"
+description = "Grouped Regression Tree implementation in C++ with pybind11"
+requires-python = ">=3.8"
+authors = [
+    { name="Joel Woodfield" },
+]
+
+[tool.scikit-build]
+wheel.expand-macos-universal-tags = true
+build.verbose = true
