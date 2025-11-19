@@ -1,3 +1,4 @@
+#pragma once
 #include <memory>
 #include <vector>
 
@@ -36,6 +37,8 @@ public:
     std::vector<std::vector<double>> predict(
         const std::vector<std::vector<double>>& X
     ) const;
+
+    void export_tree(const std::string& filename) const;
 
 private:
     int max_depth;

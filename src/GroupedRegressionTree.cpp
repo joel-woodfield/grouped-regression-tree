@@ -5,8 +5,65 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <string>
+#include <sstream>
+#include <fstream>
 
 #include "GroupedRegressionTree.h"
+
+void writeNode(std::ostream& out, Node* node) {
+    if (!node) return;
+
+    // use the node's memory address as a unique ID
+    unsigned long long id = reinterpret_cast<unsigned long long>(node);
+
+    // construct label
+    std::stringstream label;
+    std::string shape;
+    std::string color;
+
+    if (node->is_leaf) {
+        shape = "box";
+        color = "lightblue";
+        label << "LEAF\\nVal: [";
+        for (size_t i = 0; i < node->values.size(); ++i) {
+            label << node->values[i] << (i < node->values.size() - 1 ? ", " : "");
+        }
+        label << "]";
+    } else {
+        shape = "ellipse";
+        color = "lightgrey";
+        label << "Feature " << node->feature_index << "\\n<= " << node->threshold;
+    }
+
+    // node definition
+    out << "    node_" << id << " [label=\"" << label.str() 
+        << "\", shape=" << shape 
+        << ", style=filled, fillcolor=" << color << "];\n";
+
+    // children
+    if (node->left) {
+        unsigned long long left_id = reinterpret_cast<unsigned long long>(node->left.get());
+        
+        // Recursive call
+        writeNode(out, node->left.get());
+        
+        // Write Edge
+        out << "    node_" << id << " -> node_" << left_id 
+            << " [label=\"True\", fontsize=10];\n";
+    }
+
+    if (node->right) {
+        unsigned long long right_id = reinterpret_cast<unsigned long long>(node->right.get());
+        
+        // Recursive call
+        writeNode(out, node->right.get());
+        
+        // Write Edge
+        out << "    node_" << id << " -> node_" << right_id 
+            << " [label=\"False\", fontsize=10];\n";
+    }
+}
 
 void GroupedRegressionTree::fit(
     const std::vector<std::vector<double>>& X, 
@@ -47,6 +104,21 @@ std::vector<std::vector<double>> GroupedRegressionTree::predict(
         predictions.push_back(predict_single(row));
     }
     return predictions;
+}
+
+void GroupedRegressionTree::export_tree(const std::string& filename) const {
+    std::ofstream out(filename);
+    out << "digraph DecisionTree {\n";
+    out << "    node [fontname=\"Arial\"];\n";
+    out << "    edge [fontname=\"Arial\"];\n";
+    
+    if (root) {
+        writeNode(out, root.get());
+    }
+    
+    out << "}\n";
+    out.close();
+    std::cout << "DOT file generated: " << filename << std::endl;
 }
 
 std::vector<double> GroupedRegressionTree::calculate_leaf_values(

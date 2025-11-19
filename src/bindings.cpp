@@ -9,5 +9,6 @@ PYBIND11_MODULE(grouped_regression_tree, m) {
         .def(py::init<int,int,int>())
         .def("fit", &GroupedRegressionTree::fit)
         .def("predict", &GroupedRegressionTree::predict)
-        .def("predict_single", &GroupedRegressionTree::predict_single);
+        .def("predict_single", &GroupedRegressionTree::predict_single)
+        .def("export_tree", &GroupedRegressionTree::export_tree);
 }

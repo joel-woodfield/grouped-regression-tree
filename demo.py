@@ -40,6 +40,7 @@ def main():
         -sample[0] + 4 * sample[1]
     ])
 
+    model.export_tree("grouped_regression_tree.dot")
 
 
 if __name__ == "__main__":
