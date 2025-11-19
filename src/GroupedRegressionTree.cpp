@@ -13,10 +13,15 @@ void GroupedRegressionTree::fit(
     const std::vector<double>& y,
     const std::vector<int>& g
 ) {
-    std::vector<int> indices(X.size());
-    std::iota(indices.begin(), indices.end(), 0);
+	// presort indices for each feature
+	std::vector<std::vector<int>> sorted_indices(X[0].size(), std::vector<int>(X.size()));
+	for (size_t f = 0; f < X[0].size(); ++f) {
+		std::iota(sorted_indices[f].begin(), sorted_indices[f].end(), 0);
+		std::sort(sorted_indices[f].begin(), sorted_indices[f].end(),
+			[&X, f](int a, int b) { return X[a][f] < X[b][f]; });
+	}
     
-    root = build_tree(X, y, g, indices, 0);
+    root = build_tree(X, y, g, sorted_indices, 0);
 }
 
 std::vector<double> GroupedRegressionTree::predict_single(
@@ -66,15 +71,17 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
     const std::vector<std::vector<double>>& X, 
     const std::vector<double>& y,
     const std::vector<int>& g,
-    std::vector<int>& indices, 
+    std::vector<std::vector<int>>& sorted_indices, 
     int depth
 ) {
     std::unique_ptr<Node> node = std::make_unique<Node>();
+	int n_samples = sorted_indices[0].size();
+	int n_features = sorted_indices.size();
 
     // stopping criteria
-    if (indices.size() < min_samples_split || depth >= max_depth) {
+    if (n_samples < min_samples_split || depth >= max_depth) {
         node->is_leaf = true;
-        node->values = calculate_leaf_values(y, g, indices);
+        node->values = calculate_leaf_values(y, g, sorted_indices[0]);
         return node;
     }
 
@@ -86,29 +93,23 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
     std::vector<double> sum_y(output_size, 0.0);
     std::vector<double> sum_yy(output_size, 0.0);
 
-    for (int idx : indices) {
+    for (int idx : sorted_indices[0]) {
         double val = y[idx];
         sum_y[g[idx]] += val;
         sum_yy[g[idx]] += val * val;
     }
 
-    int n_samples = indices.size();
-    int n_features = X[0].size();
-
     for (int f = 0; f < n_features; ++f) {
-        std::sort(indices.begin(), indices.end(), 
-            [&X, f](int a, int b) { return X[a][f] < X[b][f]; });
-
         std::vector<double> left_sum_y(output_size, 0.0);
         std::vector<double> left_sum_yy(output_size, 0.0);
 
         for (int i = 0; i < n_samples - 1; ++i) {
-            int idx = indices[i];
+            int idx = sorted_indices[f][i];
             double y_val = y[idx];
             
             left_sum_y[g[idx]] += y_val;
             left_sum_yy[g[idx]] += y_val * y_val;
-            if (X[indices[i]][f] == X[indices[i+1]][f]) continue;
+            if (X[sorted_indices[f][i]][f] == X[sorted_indices[f][i+1]][f]) continue;
 
             int n_left = i + 1;
             int n_right = n_samples - n_left;
@@ -130,7 +131,7 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
             if (current_total_score < best_score) {
                 best_score = current_total_score;
                 best_feature = f;
-                best_thresh = (X[indices[i]][f] + X[indices[i+1]][f]) / 2.0;
+                best_thresh = (X[sorted_indices[f][i]][f] + X[sorted_indices[f][i+1]][f]) / 2.0;
             }
         }
     }
@@ -138,23 +139,26 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
     // If no split improved the score (or all features identical)
     if (best_feature == -1) {
         node->is_leaf = true;
-        node->values = calculate_leaf_values(y, g, indices);
+        node->values = calculate_leaf_values(y, g, sorted_indices[0]);
         return node;
     }
 
     // Perform the split
-    std::vector<int> left_indices;
-    std::vector<int> right_indices;
-    left_indices.reserve(indices.size());
-    right_indices.reserve(indices.size());
+	std::vector<std::vector<int>> left_indices(n_features);
+	std::vector<std::vector<int>> right_indices(n_features);
 
-    for (int idx : indices) {
-        if (X[idx][best_feature] <= best_thresh) {
-            left_indices.push_back(idx);
-        } else {
-            right_indices.push_back(idx);
-        }
-    }
+	for (int f = 0; f < n_features; ++f) {
+		left_indices[f].reserve(n_samples);
+		right_indices[f].reserve(n_samples);
+
+		for (int idx : sorted_indices[f]) {
+			if (X[idx][best_feature] <= best_thresh) {
+				left_indices[f].push_back(idx);
+			} else {
+				right_indices[f].push_back(idx);
+			}
+		}
+	}
 
     node->feature_index = best_feature;
     node->threshold = best_thresh;
@@ -164,43 +168,3 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
     return node;
 }
 
-int main() {
-    int n_samples = 500000;
-    std::vector<std::vector<double>> X(n_samples, std::vector<double>(2));
-    std::vector<double> y(n_samples, 0.0);
-    std::vector<int> g(n_samples, 0);
-
-    for(int i=0; i<n_samples; ++i) {
-        X[i][0] = (rand() % 100) / 10.0;
-        X[i][1] = (rand() % 100) / 10.0;
-
-        g[i] = rand() % 3;
-        if (g[i] == 0) {
-            y[i] = 2 * X[i][0] + 5 * X[i][1];
-        } else if (g[i] == 1) {
-            y[i] = 7 * X[i][0] + 3 * X[i][1];
-        } else {
-            y[i] = 8 * X[i][0] - 6 * X[i][1];
-        }
-    }
-
-    std::cout << "Training on " << n_samples << " samples..." << std::endl;
-
-    GroupedRegressionTree tree(10, 5, 3);
-    tree.fit(X, y, g);
-
-    std::vector<double> sample = {1.0, 4.0};
-    std::vector<double> prediction = tree.predict_single(sample);
-
-    std::cout << "Input: [7.0, 4.0]" << std::endl;
-    std::cout << "Predicted: ";
-    for (double val : prediction) {
-        std::cout << val << " ";
-    }
-    std::cout << std::endl; 
-    std::cout << "Actual Target: [" << (2 * sample[0] + 5 * sample[1]) 
-        << ", " << (7 * sample[0] + 3 * sample[1]) << ", " << (8 * sample[0] - 6 * sample[1]) 
-        << "]" << std::endl; 
-
-    return 0; 
-}

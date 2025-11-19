@@ -1,3 +1,4 @@
+#include <memory>
 #include <vector>
 
 struct Node {
@@ -52,7 +53,7 @@ private:
         const std::vector<std::vector<double>>& X, 
         const std::vector<double>& y,
         const std::vector<int>& g,
-        std::vector<int>& indices, 
+        std::vector<std::vector<int>>& sorted_indices, 
         int depth
     );
 
