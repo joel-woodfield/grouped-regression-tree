@@ -20,3 +20,7 @@ install_manifest.txt
 .vscode/
 .idea/
 .DS_Store
+
+build_profile/
+perf.data*
+profile_dump.txt
