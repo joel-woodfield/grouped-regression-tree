@@ -47,7 +47,7 @@ private:
         const std::vector<double>& y, 
         const std::vector<int>& g,
         const std::vector<int>& indices
-    );
+    ) const;
 
     std::unique_ptr<Node> build_tree(
         const std::vector<std::vector<double>>& X, 

@@ -53,7 +53,7 @@ std::vector<double> GroupedRegressionTree::calculate_leaf_values(
     const std::vector<double>& y, 
     const std::vector<int>& g,
     const std::vector<int>& indices
-) {
+) const {
     std::vector<double> sum(output_size, 0.0);
     std::vector<int> count(output_size, 0);
     for (int idx : indices) {
