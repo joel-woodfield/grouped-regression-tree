@@ -11,7 +11,15 @@
 
 #include "GroupedRegressionTree.h"
 
-void writeNode(std::ostream& out, Node* node) {
+inline double at(const double* X, int i, int j, int row_size) {
+    return X[i * row_size + j];
+}
+
+inline double& at(double* X, int i, int j, int row_size) {
+    return X[i * row_size + j];
+}
+
+void write_node(std::ostream& out, Node* node) {
     if (!node) return;
 
     // use the node's memory address as a unique ID
@@ -46,7 +54,7 @@ void writeNode(std::ostream& out, Node* node) {
         unsigned long long left_id = reinterpret_cast<unsigned long long>(node->left.get());
         
         // Recursive call
-        writeNode(out, node->left.get());
+        write_node(out, node->left.get());
         
         // Write Edge
         out << "    node_" << id << " -> node_" << left_id 
@@ -57,7 +65,7 @@ void writeNode(std::ostream& out, Node* node) {
         unsigned long long right_id = reinterpret_cast<unsigned long long>(node->right.get());
         
         // Recursive call
-        writeNode(out, node->right.get());
+        write_node(out, node->right.get());
         
         // Write Edge
         out << "    node_" << id << " -> node_" << right_id 
@@ -66,19 +74,39 @@ void writeNode(std::ostream& out, Node* node) {
 }
 
 void GroupedRegressionTree::fit(
-    const std::vector<std::vector<double>>& X, 
-    const std::vector<double>& y,
-    const std::vector<int>& g
+    const double* X,
+    const double* y,
+    const int* g,
+    int n_samples,
+    int n_features
 ) {
 	// presort indices for each feature
-	std::vector<std::vector<int>> sorted_indices(X[0].size(), std::vector<int>(X.size()));
-	for (size_t f = 0; f < X[0].size(); ++f) {
+	std::vector<std::vector<int>> sorted_indices(n_features, std::vector<int>(n_samples));
+	for (size_t f = 0; f < n_features; ++f) {
 		std::iota(sorted_indices[f].begin(), sorted_indices[f].end(), 0);
 		std::sort(sorted_indices[f].begin(), sorted_indices[f].end(),
-			[&X, f](int a, int b) { return X[a][f] < X[b][f]; });
+			[&X, f, n_features](int a, int b) { return at(X, a, f, n_features) < at(X, b, f, n_features); });
 	}
     
     root = build_tree(X, y, g, sorted_indices, 0);
+}
+
+void GroupedRegressionTree::fit_py(
+    const py::array_t<double>& X,
+    const py::array_t<double>& y,
+    const py::array_t<int>& g
+) {
+    auto X_view = X.unchecked<2>();
+    int n_samples = X_view.shape(0);
+    int n_features = X_view.shape(1);
+
+    fit(
+        static_cast<const double*>(X.request().ptr),
+        static_cast<const double*>(y.request().ptr),
+        static_cast<const int*>(g.request().ptr),
+        n_samples,
+        n_features
+    );
 }
 
 std::vector<double> GroupedRegressionTree::predict_single(
@@ -96,14 +124,32 @@ std::vector<double> GroupedRegressionTree::predict_single(
 }
 
 std::vector<std::vector<double>> GroupedRegressionTree::predict(
-    const std::vector<std::vector<double>>& X
+    const double* X,
+    int n_samples,
+    int n_features
 ) const {
     std::vector<std::vector<double>> predictions;
-    predictions.reserve(X.size());
-    for (const auto& row : X) {
-        predictions.push_back(predict_single(row));
+    predictions.reserve(n_samples);
+
+    for (int i = 0; i < n_samples; ++i) {
+        std::vector<double> sample(output_size);
+
+        for (int j = 0; j < output_size; ++j) {
+            sample.push_back(at(X, i, j, n_features));
+        }
+        predictions.push_back(predict_single(sample));
     }
     return predictions;
+}
+
+std::vector<std::vector<double>> GroupedRegressionTree::predict_py(
+    const py::array_t<double>& X
+) const {
+    auto X_view = X.unchecked<2>();
+    int n_samples = X_view.shape(0);
+    int n_features = X_view.shape(1);
+
+    return predict(static_cast<const double*>(X.request().ptr), n_samples, n_features);
 }
 
 std::unique_ptr<GroupedRegressionTree> GroupedRegressionTree::clone() const {
@@ -124,7 +170,7 @@ void GroupedRegressionTree::export_tree(const std::string& filename) const {
     out << "    edge [fontname=\"Arial\"];\n";
     
     if (root) {
-        writeNode(out, root.get());
+        write_node(out, root.get());
     }
     
     out << "}\n";
@@ -133,8 +179,8 @@ void GroupedRegressionTree::export_tree(const std::string& filename) const {
 }
 
 std::vector<double> GroupedRegressionTree::calculate_leaf_values(
-    const std::vector<double>& y, 
-    const std::vector<int>& g,
+    const double* y,
+    const int* g,
     const std::vector<int>& indices
 ) const {
     std::vector<double> sum(output_size, 0.0);
@@ -151,9 +197,9 @@ std::vector<double> GroupedRegressionTree::calculate_leaf_values(
 }
 
 std::unique_ptr<Node> GroupedRegressionTree::build_tree(
-    const std::vector<std::vector<double>>& X, 
-    const std::vector<double>& y,
-    const std::vector<int>& g,
+    const double* X,
+    const double* y,
+    const int* g,
     std::vector<std::vector<int>>& sorted_indices, 
     int depth
 ) {
@@ -192,7 +238,7 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
             
             left_sum_y[g[idx]] += y_val;
             left_sum_yy[g[idx]] += y_val * y_val;
-            if (X[sorted_indices[f][i]][f] == X[sorted_indices[f][i+1]][f]) continue;
+            if (at(X, sorted_indices[f][i], f, n_features) == at(X, sorted_indices[f][i+1], f, n_features)) continue;
 
             int n_left = i + 1;
             int n_right = n_samples - n_left;
@@ -214,7 +260,7 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
             if (current_total_score < best_score) {
                 best_score = current_total_score;
                 best_feature = f;
-                best_thresh = (X[sorted_indices[f][i]][f] + X[sorted_indices[f][i+1]][f]) / 2.0;
+                best_thresh = (at(X, sorted_indices[f][i], f, n_features) + at(X, sorted_indices[f][i+1], f, n_features)) / 2.0;
             }
         }
     }
@@ -235,7 +281,7 @@ std::unique_ptr<Node> GroupedRegressionTree::build_tree(
 		right_indices[f].reserve(n_samples);
 
 		for (int idx : sorted_indices[f]) {
-			if (X[idx][best_feature] <= best_thresh) {
+            if (at(X, idx, best_feature, n_features) <= best_thresh) {
 				left_indices[f].push_back(idx);
 			} else {
 				right_indices[f].push_back(idx);

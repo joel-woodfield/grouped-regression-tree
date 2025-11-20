@@ -1,6 +1,11 @@
 #pragma once
 #include <memory>
 #include <vector>
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+
+namespace py = pybind11;
 
 struct Node {
     bool is_leaf = false;
@@ -40,15 +45,29 @@ public:
     {}
 
     void fit(
-        const std::vector<std::vector<double>>& X, 
-        const std::vector<double>& y,
-        const std::vector<int>& g
+        const double* X,
+        const double* y,
+        const int* g,
+        int n_samples,
+        int n_features
+    );
+
+    void fit_py(
+        const py::array_t<double>& X,
+        const py::array_t<double>& y,
+        const py::array_t<int>& g
     );
 
     std::vector<double> predict_single(const std::vector<double>& sample) const;
 
     std::vector<std::vector<double>> predict(
-        const std::vector<std::vector<double>>& X
+        const double* X,
+        int n_samples,
+        int n_features
+    ) const;
+
+    std::vector<std::vector<double>> predict_py(
+        const py::array_t<double>& X
     ) const;
 
     std::unique_ptr<GroupedRegressionTree> clone() const;
@@ -62,15 +81,15 @@ private:
     std::unique_ptr<Node> root;
 
     std::vector<double> calculate_leaf_values(
-        const std::vector<double>& y, 
-        const std::vector<int>& g,
+        const double* y, 
+        const int* g,
         const std::vector<int>& indices
     ) const;
 
     std::unique_ptr<Node> build_tree(
-        const std::vector<std::vector<double>>& X, 
-        const std::vector<double>& y,
-        const std::vector<int>& g,
+        const double* X,
+        const double* y,
+        const int* g,
         std::vector<std::vector<int>>& sorted_indices, 
         int depth
     );
