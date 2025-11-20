@@ -4,7 +4,7 @@ project(grouped_regression_tree)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(pybind11 CONFIG REQUIRED)
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 
 pybind11_add_module(grouped_regression_tree
     src/bindings.cpp
@@ -13,7 +13,9 @@ pybind11_add_module(grouped_regression_tree
 
 target_include_directories(grouped_regression_tree PRIVATE include)
 
-target_link_libraries(grouped_regression_tree PRIVATE OpenMP::OpenMP_CXX)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(grouped_regression_tree PRIVATE OpenMP::OpenMP_CXX)
+endif()
 
 target_compile_options(grouped_regression_tree PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/O2>
