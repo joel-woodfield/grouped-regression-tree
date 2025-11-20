@@ -82,6 +82,7 @@ void GroupedRegressionTree::fit(
 ) {
 	// presort indices for each feature
 	std::vector<std::vector<int>> sorted_indices(n_features, std::vector<int>(n_samples));
+    #pragma omp parallel for
 	for (size_t f = 0; f < n_features; ++f) {
 		std::iota(sorted_indices[f].begin(), sorted_indices[f].end(), 0);
 		std::sort(sorted_indices[f].begin(), sorted_indices[f].end(),
