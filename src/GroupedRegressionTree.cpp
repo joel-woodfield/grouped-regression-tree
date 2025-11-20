@@ -132,10 +132,10 @@ std::vector<std::vector<double>> GroupedRegressionTree::predict(
     predictions.reserve(n_samples);
 
     for (int i = 0; i < n_samples; ++i) {
-        std::vector<double> sample(output_size);
+        std::vector<double> sample(n_features);
 
-        for (int j = 0; j < output_size; ++j) {
-            sample.push_back(at(X, i, j, n_features));
+        for (int j = 0; j < n_features; ++j) {
+            sample[j] = at(X, i, j, n_features);
         }
         predictions.push_back(predict_single(sample));
     }
