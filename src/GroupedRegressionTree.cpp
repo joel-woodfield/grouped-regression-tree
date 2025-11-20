@@ -106,6 +106,17 @@ std::vector<std::vector<double>> GroupedRegressionTree::predict(
     return predictions;
 }
 
+std::unique_ptr<GroupedRegressionTree> GroupedRegressionTree::clone() const {
+    auto new_tree = std::make_unique<GroupedRegressionTree>(
+        max_depth, min_samples_split, output_size
+    );
+
+    if (root) {
+        new_tree->root = std::make_unique<Node>(*root);
+    }
+    return new_tree;
+}
+
 void GroupedRegressionTree::export_tree(const std::string& filename) const {
     std::ofstream out(filename);
     out << "digraph DecisionTree {\n";

@@ -11,6 +11,19 @@ struct Node {
     std::unique_ptr<Node> right = nullptr;
 
     Node(int size = 1) : values(size, 0.0) {}
+
+    Node(const Node& other) {
+        is_leaf = other.is_leaf;
+        values = other.values;
+        feature_index = other.feature_index;
+        threshold = other.threshold;
+        if (other.left) {
+            left = std::make_unique<Node>(*other.left);
+        }
+        if (other.right) {
+            right = std::make_unique<Node>(*other.right);
+        }
+    }
 };
 
 
@@ -37,6 +50,8 @@ public:
     std::vector<std::vector<double>> predict(
         const std::vector<std::vector<double>>& X
     ) const;
+
+    std::unique_ptr<GroupedRegressionTree> clone() const;
 
     void export_tree(const std::string& filename) const;
 
