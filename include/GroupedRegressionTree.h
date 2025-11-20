@@ -53,9 +53,9 @@ public:
     );
 
     void fit_py(
-        const py::array_t<double>& X,
-        const py::array_t<double>& y,
-        const py::array_t<int>& g
+        const py::array_t<double, py::array::c_style | py::array::forcecast>& X,
+        const py::array_t<double, py::array::c_style | py::array::forcecast>& y,
+        const py::array_t<int, py::array::c_style | py::array::forcecast>& g
     );
 
     std::vector<double> predict_single(const std::vector<double>& sample) const;
@@ -67,7 +67,7 @@ public:
     ) const;
 
     std::vector<std::vector<double>> predict_py(
-        const py::array_t<double>& X
+        const py::array_t<double, py::array::c_style | py::array::forcecast>& X
     ) const;
 
     std::unique_ptr<GroupedRegressionTree> clone() const;

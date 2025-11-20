@@ -92,9 +92,9 @@ void GroupedRegressionTree::fit(
 }
 
 void GroupedRegressionTree::fit_py(
-    const py::array_t<double>& X,
-    const py::array_t<double>& y,
-    const py::array_t<int>& g
+    const py::array_t<double, py::array::c_style | py::array::forcecast>& X,
+    const py::array_t<double, py::array::c_style | py::array::forcecast>& y,
+    const py::array_t<int, py::array::c_style | py::array::forcecast>& g
 ) {
     auto X_view = X.unchecked<2>();
     int n_samples = X_view.shape(0);
@@ -143,7 +143,7 @@ std::vector<std::vector<double>> GroupedRegressionTree::predict(
 }
 
 std::vector<std::vector<double>> GroupedRegressionTree::predict_py(
-    const py::array_t<double>& X
+    const py::array_t<double, py::array::c_style | py::array::forcecast>& X
 ) const {
     auto X_view = X.unchecked<2>();
     int n_samples = X_view.shape(0);
