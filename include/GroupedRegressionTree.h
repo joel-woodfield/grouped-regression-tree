@@ -35,14 +35,15 @@ struct Node {
 class GroupedRegressionTree {
 public:
     GroupedRegressionTree(
-        int max_depth = 10, 
+        std::optional<int> max_depth = 10, 
         int min_samples_split = 2, 
         int output_size = 1
     ) :
-        max_depth(max_depth),
         min_samples_split(min_samples_split),
         output_size(output_size)
-    {}
+    {
+        this->max_depth = max_depth.value_or(std::numeric_limits<int>::max());
+    }
 
     void fit(
         const double* X,
