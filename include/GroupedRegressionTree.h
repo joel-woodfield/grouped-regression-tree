@@ -75,6 +75,10 @@ public:
 
     void export_tree(const std::string& filename) const;
 
+    void save_json(const std::string& filename) const;
+
+    void load_json(const std::string& filename);
+
 private:
     int max_depth;
     int min_samples_split;

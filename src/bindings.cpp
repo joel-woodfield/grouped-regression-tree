@@ -14,5 +14,7 @@ PYBIND11_MODULE(grouped_regression_tree, m) {
         .def("__deepcopy__", [](const GroupedRegressionTree &self, py::dict) {
             return self.clone();
         })
-        .def("export_tree", &GroupedRegressionTree::export_tree);
+        .def("export_tree", &GroupedRegressionTree::export_tree)
+        .def("save_json", &GroupedRegressionTree::save_json)
+        .def("load_json", &GroupedRegressionTree::load_json);
 }

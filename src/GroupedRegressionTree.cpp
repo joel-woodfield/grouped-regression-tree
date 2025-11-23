@@ -10,6 +10,9 @@
 #include <fstream>
 
 #include "GroupedRegressionTree.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 inline double at(const double* X, int i, int j, int row_size) {
     return X[i * row_size + j];
@@ -71,6 +74,42 @@ void write_node(std::ostream& out, Node* node) {
         out << "    node_" << id << " -> node_" << right_id 
             << " [label=\"False\", fontsize=10];\n";
     }
+}
+
+json _save_json(const Node* node) {
+    if (!node) {
+        return nullptr;
+    }
+
+    json j;
+    j["is_leaf"] = node->is_leaf;
+    j["values"] = node->values;
+    j["feature_index"] = node->feature_index;
+    j["threshold"] = node->threshold;
+
+    j["left"] = _save_json(node->left.get());
+    j["right"] = _save_json(node->right.get());
+
+    return j;
+}
+
+std::unique_ptr<Node> _load_json(const json& j) {
+    if (j.is_null()) {
+        return nullptr;
+    }
+
+    int output_size = j.at("values").size();
+    std::unique_ptr<Node> node = std::make_unique<Node>(output_size);
+
+    node->is_leaf = j.at("is_leaf").get<bool>();
+    node->values = j.at("values").get<std::vector<double>>();
+    node->feature_index = j.at("feature_index").get<int>();
+    node->threshold = j.at("threshold").get<double>();
+
+    node->left = _load_json(j.at("left"));
+    node->right = _load_json(j.at("right"));
+
+    return node;
 }
 
 void GroupedRegressionTree::fit(
@@ -177,6 +216,21 @@ void GroupedRegressionTree::export_tree(const std::string& filename) const {
     out << "}\n";
     out.close();
     std::cout << "DOT file generated: " << filename << std::endl;
+}
+
+void GroupedRegressionTree::save_json(const std::string& filename) const {
+    json j = _save_json(root.get());
+    std::ofstream out(filename);
+    out << std::setw(4) << j;
+    out.close();
+}
+
+void GroupedRegressionTree::load_json(const std::string& filename) {
+    std::ifstream in(filename);
+    json j;
+    in >> j;
+    in.close();
+    root = _load_json(j);
 }
 
 std::vector<double> GroupedRegressionTree::calculate_leaf_values(
