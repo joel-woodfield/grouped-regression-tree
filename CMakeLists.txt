@@ -22,7 +22,6 @@ target_compile_options(grouped_regression_tree PRIVATE
 
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:
         -O3
-        -march=native
         -ffast-math
         -funroll-loops
     >
